@@ -54,7 +54,7 @@
  {
      unsigned char ret;
 
-     i2c_init();                             // initialize I2C library
+     I2C_Init();                             // initialize I2C library
 
      // write 0x75 to EEPROM address 5 (Byte Write) 
      i2c_start_wait(Dev24C02+I2C_WRITE);     // set device address and write mode
@@ -93,13 +93,23 @@
 /** defines the data direction (writing to I2C device) in i2c_start(),i2c_rep_start() */
 #define I2C_WRITE   0
 
+// almost waiting for half second
+#define MAX_WAIT 80000ul
 
+
+typedef enum {
+	START_CONDITION_ERR,
+	ADDRESS_WRITE_ERR,
+	STOP_CONDITON_ERR,
+	START_OK
+
+}i2c_stdRetType;
 /**
  @brief initialize the I2C master interace. Need to be called only once 
  @param  void
  @return none
  */
-extern void i2c_init(void);
+extern void I2C_Init(void);
 
 
 /** 
@@ -107,7 +117,7 @@ extern void i2c_init(void);
  @param void
  @return none
  */
-extern void i2c_stop(void);
+extern unsigned char i2c_stop(void);
 
 
 /** 
@@ -137,7 +147,7 @@ extern unsigned char i2c_rep_start(unsigned char addr);
  @param    addr address and transfer direction of I2C device
  @return   none
  */
-extern void i2c_start_wait(unsigned char addr);
+extern i2c_stdRetType i2c_start_wait(unsigned char addr);
 
  
 /**

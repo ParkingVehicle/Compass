@@ -32,8 +32,6 @@ int main(void)
 
 
 
-
-
 		//STKPRNT_PrintSerial("UART INIT\r\n");
 
 	while(1){
@@ -78,12 +76,5 @@ int main(void)
 }
 
 
-ISR(USART_RXC_vect)
-{
-	char ReceivedByte;
-	ReceivedByte = UDR; // Fetch the received byte value into the variable "ByteReceived"
-
-	UDR = ReceivedByte; // Echo back the received byte back to the computer
-}
 
 

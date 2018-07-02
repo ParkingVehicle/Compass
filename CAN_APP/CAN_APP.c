@@ -66,6 +66,7 @@ void CompassMsgSend(can_t * msg)
 //#define debug_data
 	// convert from float to array of bytes
 	comp_str compass_data_local;
+	CompState CompState;
 	char ID[9]="000000\r\n";
 	ID[8]=0;
 	// get data from compass
@@ -108,7 +109,11 @@ void CompassMsgSend(can_t * msg)
 	//STKPRNT_Blocking_PrintStr("c: ");
 	//STKPRNT_PrintSerial(ID);
 	DecToAscii(compass_data_local.heading,ID);
-	STKPRNT_PrintSerial(ID);
+	Compass_getModuleStatus(&CompState);
+	if(CompState == COMP_RUNNING){
+		STKPRNT_PrintSerial(ID);
+	}
+
 #endif
 
 }

@@ -62,10 +62,16 @@ References:
 #define HMC5883L_GAINZ2 0.00760243
 #define HMC5883L_GAINZ3 0.995365
 #endif
+// enums
+typedef enum {
+	HMC_INIT_OK,
+	HMC_INIT_NOK,
+	HMC_ERR_I2C
 
+}HmcStdtype;
 //functions
-extern void hmc5883l_init(void);
-extern void hmc5883l_getrawdata(int16_t *mxraw, int16_t *myraw, int16_t *mzraw);
-extern void hmc5883l_getdata(double *mx, double *my, double *mz);
+extern HmcStdtype hmc5883l_init(void);
+extern HmcStdtype hmc5883l_getrawdata(int16_t *mxraw, int16_t *myraw, int16_t *mzraw);
+extern HmcStdtype hmc5883l_getdata(double *mx, double *my, double *mz);
 
 #endif

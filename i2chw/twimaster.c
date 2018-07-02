@@ -24,15 +24,14 @@
 /*************************************************************************
  Initialization of the I2C bus interface. Need to be called only once
 *************************************************************************/
-void i2c_init(void)
+void I2C_Init(void)
 {
   /* initialize TWI clock: 100 kHz clock, TWPS = 0 => prescaler = 1 */
   
   TWSR = 0;                         /* no prescaler */
   //TWBR = ((4000000UL/SCL_CLOCK)-16)/2;  /* must be > 10 for stable operation */
   TWBR = 192;
-}/* i2c_init */
-
+}/* I2C_Init */
 
 /*************************************************************************	
   Issues a start condition and sends address and transfer direction.
@@ -41,13 +40,20 @@ void i2c_init(void)
 unsigned char i2c_start(unsigned char address)
 {
     uint8_t   twst;
-
+    uint32_t wait_counter = 0;
 	// send START condition
 	TWCR = (1<<TWINT) | (1<<TWSTA) | (1<<TWEN);
 
 	// wait until transmission completed
-	while(!(TWCR & (1<<TWINT)));
-
+	while((!(TWCR & (1<<TWINT)))&& wait_counter < MAX_WAIT)
+		{
+			wait_counter++;
+		}
+	if(!(TWCR & (1<<TWINT)))
+	{
+		return 0;
+	}
+	wait_counter = 0;
 	// check value of TWI Status Register. Mask prescaler bits.
 	twst = TW_STATUS & 0xF8;
 	if ( (twst != TW_START) && (twst != TW_REP_START)) return 1;
@@ -57,8 +63,14 @@ unsigned char i2c_start(unsigned char address)
 	TWCR = (1<<TWINT) | (1<<TWEN);
 
 	// wail until transmission completed and ACK/NACK has been received
-	while(!(TWCR & (1<<TWINT)));
-
+	while((!(TWCR & (1<<TWINT)))&&wait_counter < MAX_WAIT)
+	{
+		wait_counter++;
+	}
+	if(!(TWCR & (1<<TWINT)))
+	{
+		return 0;
+	}
 	// check value of TWI Status Register. Mask prescaler bits.
 	twst = TW_STATUS & 0xF8;
 	if ( (twst != TW_MT_SLA_ACK) && (twst != TW_MR_SLA_ACK) ) return 1;
@@ -74,20 +86,27 @@ unsigned char i2c_start(unsigned char address)
  
  Input:   address and transfer direction of I2C device
 *************************************************************************/
-void i2c_start_wait(unsigned char address)
+i2c_stdRetType i2c_start_wait(unsigned char address)
 {
     uint8_t   twst;
-
-    volatile static int debug_counter=0;
+    uint32_t wait_counter = 0;
+    i2c_stdRetType ret = START_OK;
     while ( 1 )
     {
-    	debug_counter++;
 	    // send START condition
 	    TWCR = (1<<TWINT) | (1<<TWSTA) | (1<<TWEN);
     
     	// wait until transmission completed
-    	while(!(TWCR & (1<<TWINT)));
-    
+    	while((!(TWCR & (1<<TWINT)))&& wait_counter < MAX_WAIT)
+    			{
+    				wait_counter++;
+    			}
+    		if(!(TWCR & (1<<TWINT)))
+    		{
+    			ret = START_CONDITION_ERR;
+    			break;
+    		}
+    		wait_counter = 0;
     	// check value of TWI Status Register. Mask prescaler bits.
     	twst = TW_STATUS & 0xF8;
     	if ( (twst != TW_START) && (twst != TW_REP_START)) continue;
@@ -97,8 +116,16 @@ void i2c_start_wait(unsigned char address)
     	TWCR = (1<<TWINT) | (1<<TWEN);
     
     	// wail until transmission completed
-    	while(!(TWCR & (1<<TWINT)));
-    
+    	while((!(TWCR & (1<<TWINT)))&&wait_counter < MAX_WAIT)
+    		{
+    			wait_counter++;
+    		}
+    		if(!(TWCR & (1<<TWINT)))
+    		{
+    			ret = ADDRESS_WRITE_ERR;
+    			break;
+    		}
+    		wait_counter=0;
     	// check value of TWI Status Register. Mask prescaler bits.
     	twst = TW_STATUS & 0xF8;
     	if ( (twst == TW_MT_SLA_NACK )||(twst ==TW_MR_DATA_NACK) ) 
@@ -107,14 +134,22 @@ void i2c_start_wait(unsigned char address)
 	        TWCR = (1<<TWINT) | (1<<TWEN) | (1<<TWSTO);
 	        
 	        // wait until stop condition is executed and bus released
-	        while(TWCR & (1<<TWSTO));
-	        
+	        while((TWCR & (1<<TWSTO))&&wait_counter < MAX_WAIT)
+	        	{
+	        		wait_counter++;
+	        	}
+	        	if(TWCR & (1<<TWSTO))
+	        	{
+	        		ret = STOP_CONDITON_ERR;
+	        		break;
+	        	}
     	    continue;
     	}
     	//if( twst != TW_MT_SLA_ACK) return 1;
     	break;
      }
 
+    return ret;
 }/* i2c_start_wait */
 
 
@@ -136,14 +171,22 @@ unsigned char i2c_rep_start(unsigned char address)
 /*************************************************************************
  Terminates the data transfer and releases the I2C bus
 *************************************************************************/
-void i2c_stop(void)
+unsigned char i2c_stop(void)
 {
+	uint32_t wait_counter = 0;
     /* send stop condition */
 	TWCR = (1<<TWINT) | (1<<TWEN) | (1<<TWSTO);
 	
 	// wait until stop condition is executed and bus released
-	while(TWCR & (1<<TWSTO));
-
+	while((TWCR & (1<<TWSTO))&&wait_counter < MAX_WAIT)
+		        	{
+		        		wait_counter++;
+		        	}
+		        	if(TWCR & (1<<TWSTO))
+		        	{
+		        		return 0;
+		        	}
+	return 1;
 }/* i2c_stop */
 
 
@@ -157,13 +200,21 @@ void i2c_stop(void)
 unsigned char i2c_write( unsigned char data )
 {	
     uint8_t   twst;
-    
+    uint32_t wait_counter = 0;
 	// send data to the previously addressed device
 	TWDR = data;
 	TWCR = (1<<TWINT) | (1<<TWEN);
 
 	// wait until transmission completed
-	while(!(TWCR & (1<<TWINT)));
+	while((!(TWCR & (1<<TWINT)))&& wait_counter < MAX_WAIT)
+			{
+				wait_counter++;
+			}
+		if(!(TWCR & (1<<TWINT)))
+		{
+			return 0;
+		}
+		wait_counter = 0;
 
 	// check value of TWI Status Register. Mask prescaler bits
 	twst = TW_STATUS & 0xF8;

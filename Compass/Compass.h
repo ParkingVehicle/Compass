@@ -20,8 +20,10 @@ extern double mz ;
 
 
 void Compass_Init(void);
+void Compass_ReInit(void);
 void Compass_Cyclic20ms(void);
 void Compass_setCompassData(comp_str *CompassStatus);
 
 void Compass_getCompassData(comp_str * CompassStatus);
+void Compass_getModuleStatus(CompState *InCompState);
 #endif /* COMPASS_COMPASS_H_ */

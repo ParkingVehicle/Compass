@@ -13,6 +13,7 @@ Please refer to LICENSE file for licensing information.
 #include <util/delay.h>
 #include "i2cmaster.h"
 #include "hmc5883l.h"
+#include <string.h>
 
 //path to i2c fleury lib
 #include HMC5883L_I2CFLEURYPATH
@@ -22,11 +23,12 @@ static double hmc5883l_scale = 0;
 /*
  * init the hmc5883l
  */
-void hmc5883l_init(void) {
+HmcStdtype hmc5883l_init(void) {
 	//init i2c
-	i2c_init();
+	HmcStdtype ret  = HMC_INIT_OK;
+	i2c_stdRetType I2cStatus;
+	I2C_Init();
 	_delay_us(100);
-
 	//set scale
 	hmc5883l_scale = 0;
 	uint8_t regValue = 0x00;
@@ -58,50 +60,65 @@ void hmc5883l_init(void) {
 
 	//setting is in the top 3 bits of the register.
 	regValue = regValue << 5;
-    i2c_start_wait(HMC5883L_ADDR | I2C_WRITE);
-    i2c_write(HMC5883L_CONFREGB);
-    i2c_write(regValue);
-    i2c_stop();
+	I2cStatus  = i2c_start_wait(HMC5883L_ADDR | I2C_WRITE);
+	if(I2cStatus == START_OK)
+	{
+		i2c_write(HMC5883L_CONFREGB);
+		i2c_write(regValue);
+		i2c_stop();
 
-	//set measurement mode
-	i2c_start_wait(HMC5883L_ADDR | I2C_WRITE);
-	i2c_write(HMC5883L_MODEREG);
-	i2c_write(HMC5883L_MEASUREMODE);
-	i2c_stop();
+		//set measurement mode
+		i2c_start_wait(HMC5883L_ADDR | I2C_WRITE);
+		i2c_write(HMC5883L_MODEREG);
+		i2c_write(HMC5883L_MEASUREMODE);
+		i2c_stop();
+	}else{
+		ret = HMC_ERR_I2C;
+	}
+	return ret;
 }
 
 /*
  * get raw data
  */
-void hmc5883l_getrawdata(int16_t *mxraw, int16_t *myraw, int16_t *mzraw) {
+HmcStdtype hmc5883l_getrawdata(int16_t *mxraw, int16_t *myraw, int16_t *mzraw) {
 	uint8_t i = 0;
 	uint8_t buff[6];
-
-	i2c_start_wait(HMC5883L_ADDR | I2C_WRITE);
-	i2c_write(HMC5883L_DATAREGBEGIN);
-	i2c_stop();
-	i2c_start_wait(HMC5883L_ADDR | I2C_READ);
-	for(i=0; i<6; i++) {
-		if(i==6-1)
-			buff[i] = i2c_readNak();
-		else
-			buff[i] = i2c_readAck();
+	i2c_stdRetType I2cStatus;
+	HmcStdtype ret = HMC_INIT_OK;
+	memset(buff,0,sizeof(buff));
+	I2cStatus = i2c_start_wait(HMC5883L_ADDR | I2C_WRITE);
+	if (I2cStatus == START_OK)
+	{
+		i2c_write(HMC5883L_DATAREGBEGIN);
+		i2c_stop();
+		i2c_start_wait(HMC5883L_ADDR | I2C_READ);
+		for(i=0; i<6; i++) {
+			if(i==6-1)
+				buff[i] = i2c_readNak();
+			else
+				buff[i] = i2c_readAck();
+		}
+		i2c_stop();
+	}else{
+		ret = HMC_ERR_I2C;
 	}
-	i2c_stop();
 
 	*mxraw = (int16_t)((buff[0] << 8) | buff[1]);
 	*mzraw = (int16_t)((buff[2] << 8) | buff[3]);
 	*myraw = (int16_t)((buff[4] << 8) | buff[5]);
+	return ret;
 }
 
 /*
  * get scaled data
  */
-void hmc5883l_getdata(double *mx, double *my, double *mz) {
+HmcStdtype hmc5883l_getdata(double *mx, double *my, double *mz) {
 	int16_t mxraw = 0;
 	int16_t myraw = 0;
 	int16_t mzraw = 0;
-	hmc5883l_getrawdata(&mxraw, &myraw, &mzraw);
+	HmcStdtype ret = HMC_INIT_OK;
+	ret =  hmc5883l_getrawdata(&mxraw, &myraw, &mzraw);
 
 	#if HMC5883L_CALIBRATED == 1
 	float mxt = mxraw - HMC5883L_OFFSETX;
@@ -116,6 +133,6 @@ void hmc5883l_getdata(double *mx, double *my, double *mz) {
 	*mz = mzraw * hmc5883l_scale;
 	#endif
 
-
+	return ret;
 
 }

@@ -77,3 +77,11 @@ void FloatToString(float num,char * myString)
 {
 	dtostrf(num, 3, 5, myString);
 }
+/////////// USART ISR  //////////////////////////
+ISR(USART_RXC_vect)
+{
+	char ReceivedByte;
+	ReceivedByte = UDR; // Fetch the received byte value into the variable "ByteReceived"
+
+	UDR = ReceivedByte; // Echo back the received byte back to the computer
+}

@@ -12,6 +12,10 @@ typedef struct comp_struct{
 	uint32_t heading;
 
 }comp_str;
+typedef enum {
+	COMP_INIT,
+	COMP_RUNNING
+}CompState;
 void CAN_APP_Init(void);
 void CAN_APP_Cyclic20ms(void);
 
